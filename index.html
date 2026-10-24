@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>皮克球教學 — 互動原型</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body { font-family: "PingFang TC", "Noto Sans TC", system-ui, sans-serif; background: #0e1420; }
+    #app { position: fixed; inset: 0; }
+    .hud { position: fixed; z-index: 10; color: #fff; user-select: none; pointer-events: none; }
+    #title {
+      top: 16px; left: 20px; font-size: 18px; font-weight: 700;
+      text-shadow: 0 1px 4px rgba(0,0,0,.5);
+    }
+    #title small { font-weight: 400; opacity: .75; font-size: 12px; margin-left: 8px; }
+    #score {
+      top: 14px; left: 50%; transform: translateX(-50%);
+      font-size: 26px; font-weight: 800; letter-spacing: 2px;
+      background: rgba(10, 18, 32, .65); padding: 6px 22px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.15);
+    }
+    #score .you { color: #6fb6ff; } #score .ai { color: #ffb36f; }
+    #rally { top: 62px; left: 50%; transform: translateX(-50%); font-size: 13px; opacity: .8; }
+    #msg {
+      top: 38%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 30px; font-weight: 800; text-shadow: 0 2px 10px rgba(0,0,0,.6);
+      transition: opacity .25s; opacity: 0; text-align: center;
+    }
+    #help {
+      bottom: 14px; left: 50%; transform: translateX(-50%);
+      font-size: 13px; line-height: 1.7; text-align: center;
+      background: rgba(10, 18, 32, .6); padding: 8px 18px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+    }
+    #help b { color: #8fd0ff; }
+    #help .note { font-size: 11px; opacity: .6; }
+    kbd {
+      display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 12px;
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+      font-family: inherit;
+    }
+    #flash {
+      position: fixed; inset: 0; background: #fff; opacity: 0;
+      pointer-events: none; z-index: 20;
+    }
+    #practice {
+      top: 96px; left: 16px; pointer-events: auto;
+      background: rgba(10,18,32,.72); border: 1px solid rgba(255,255,255,.15);
+      border-radius: 12px; padding: 12px; width: 160px;
+    }
+    #practice .ptitle { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    #practice button {
+      display: block; width: 100%; margin: 4px 0; padding: 7px 8px;
+      border-radius: 8px; border: 1px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.08); color: #fff; font-size: 13px;
+      cursor: pointer; font-family: inherit; text-align: left;
+    }
+    #practice button:hover { background: rgba(255,255,255,.18); }
+    #practice button.active { background: #2f7fe0; border-color: #6fb6ff; }
+    #practice #modeBtn, #practice #shadowBtn { text-align: center; font-weight: 700; }
+    #practice #modeBtn.on { background: #c75b28; border-color: #ffb36f; }
+    #practice #shadowBtn.on { background: #7a4fc9; border-color: #b99aff; }
+    #practice .phint { font-size: 11px; opacity: .6; margin-top: 6px; line-height: 1.5; }
+    #chargeWrap {
+      display: none; bottom: 92px; left: 50%; transform: translateX(-50%);
+      width: 240px; height: 16px; border-radius: 8px;
+      background: rgba(10,18,32,.7); border: 1px solid rgba(255,255,255,.3);
+      overflow: hidden;
+    }
+    #chargeFill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #ffd34d, #ff7b2f, #ff3b3b);
+      transition: width .03s linear;
+    }
+    #tutCap {
+      display: none; bottom: 64px; left: 50%; transform: translateX(-50%);
+      max-width: 680px; width: calc(100% - 40px);
+      background: rgba(10,18,32,.88); border: 1px solid rgba(120,200,255,.45);
+      border-radius: 12px; padding: 13px 22px; font-size: 16px; line-height: 1.7;
+      text-align: center;
+    }
+    #tutCap b { color: #8fd0ff; }
+    #score.tutGlow {
+      box-shadow: 0 0 20px 5px rgba(255,211,77,.75);
+      border-color: #ffd34d;
+    }
+    #practice #tutBtn { text-align: center; font-weight: 700; }
+    #practice #tutBtn.on { background: #1f7a5c; border-color: #6fe0b8; }
+    #practice button.zone {
+      font-size: 12px; padding: 5px 8px;
+      margin: 3px 0 3px 12px; width: calc(100% - 12px);
+    }
+    #helpToggle {
+      position: fixed; bottom: 14px; right: 16px; z-index: 11;
+      pointer-events: auto; cursor: pointer;
+      background: rgba(10,18,32,.7); color: #fff;
+      border: 1px solid rgba(255,255,255,.25); border-radius: 8px;
+      padding: 6px 10px; font-size: 12px; font-family: inherit;
+    }
+    #helpToggle:hover { background: rgba(255,255,255,.18); }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="flash"></div>
+  <div class="hud" id="title">🏓 皮克球教學原型 <small>Pickleball Coach</small></div>
+  <div class="hud" id="practice">
+    <div class="ptitle">🖐 慣用手</div>
+    <button id="handL" class="active">左撇子：WASD 擊球</button>
+    <button id="handR">右撇子：方向鍵擊球</button>
+    <div class="ptitle" style="margin-top:10px">🎯 練球模式</div>
+    <button id="modeBtn">開始練球</button>
+    <button id="shadowBtn">空揮練習（無球）</button>
+    <div id="feedOpts" style="display:none">
+      <button class="feed active" data-type="normal">平球</button>
+      <button class="feed" data-type="lob">高球（練殺球）</button>
+      <button class="feed" data-type="drop">短球</button>
+      <button class="feed" data-type="corners">左右調動</button>
+      <div class="phint">對手會不斷餵出選定的球路，不計分</div>
+    </div>
+    <div class="ptitle" style="margin-top:10px">📖 規則教學</div>
+    <button id="tutBtn">進入教學模式</button>
+    <div id="tutOpts" style="display:none">
+      <button class="tut active" data-tut="zones">球場區域</button>
+      <div id="zoneOpts">
+        <button class="zone active" data-zone="court">↳ 球場全貌</button>
+        <button class="zone" data-zone="net">↳ 球網</button>
+        <button class="zone" data-zone="kitchen">↳ 廚房區</button>
+        <button class="zone" data-zone="boxes">↳ 發球區</button>
+      </div>
+      <button class="tut" data-tut="serve">發球規則</button>
+      <button class="tut" data-tut="twobounce">雙彈跳規則</button>
+      <button class="tut" data-tut="kitchen">廚房區規則</button>
+      <button class="tut" data-tut="scoring">計分方式</button>
+      <div class="phint">點選規則，場上會循環播放動態示範</div>
+    </div>
+  </div>
+  <div class="hud" id="tutCap"></div>
+  <button id="helpToggle">✕ 收起說明</button>
+  <div class="hud" id="score"><span class="you">0</span> : <span class="ai">0</span></div>
+  <div class="hud" id="rally"></div>
+  <div class="hud" id="msg"></div>
+  <div class="hud" id="chargeWrap"><div id="chargeFill"></div></div>
+  <div class="hud" id="help">
+    方向鍵 移動 · 擊球採「<b>按住引拍、放開揮擊</b>」：球快到時放開才打得到<br>
+    <kbd>A</kbd> 左引拍→放開往<b>右</b>抽球 · <kbd>D</kbd> 右引拍→放開往<b>左</b>抽球 ·
+    <kbd>S</kbd> 下引拍→放開挑<b>高球</b> · <kbd>W</kbd> 按住立拍於身前，球到自動擋成<b>短球</b><br>
+    <kbd>空白鍵</kbd> 發球；對打中<b>按住側身蓄力、放開殺球</b>（越久越快，球低於網會掛網）<br>
+    <span class="note">原型版規則已簡化：未實作廚房區（Kitchen）禁截擊與雙彈跳規則</span>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
